@@ -17,9 +17,10 @@ st.sidebar.title("🎨 策展人挑戰賽")
 st.sidebar.write(f"目前進度：{st.session_state.level} / {TOTAL_LEVELS}")
 st.sidebar.write(f"當前得分：{st.session_state.score}")
 
-# 顯示進度條
-progress_text = f"正在進行第 {st.session_state.level} 關"
-st.progress(st.session_state.level / TOTAL_LEVELS)
+# 修改這部分：
+if st.session_state.level <= TOTAL_LEVELS:
+    progress_text = f"正在進行第 {st.session_state.level} / {TOTAL_LEVELS} 關"
+    st.progress(st.session_state.level / TOTAL_LEVELS)
 
 # ---------------------------------------------------------
 # 遊戲關卡邏輯
