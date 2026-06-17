@@ -24,6 +24,7 @@ if 'level' not in st.session_state:
     st.session_state.level = 1
 if 'score' not in st.session_state:
     st.session_state.score = 0
+# 新增：用來記錄當前關卡是否已經點擊過「檢查答案」
 if 'answered' not in st.session_state:
     st.session_state.answered = False
 
@@ -51,6 +52,7 @@ if st.session_state.level <= TOTAL_LEVELS:
     st.image(current_q["image"], caption="禹篆字形局部", use_container_width=True)
     st.write("觀察上述字形，這可能是以下哪個字？")
     
+    # 如果已經對過答案，就禁用單選按鈕 (disabled=st.session_state.answered)，防止玩家偷改答案
     ans = st.radio(
         "選擇答案：", 
         current_q["options"], 
@@ -59,57 +61,29 @@ if st.session_state.level <= TOTAL_LEVELS:
         disabled=st.session_state.answered
     )
     
-    # 狀態一：還沒送出答案
+    # 狀態一：還沒送出答案，顯示「檢查答案」按鈕
     if not st.session_state.answered:
         if st.button("檢查答案"):
             if ans is None:
                 st.warning("請先選擇一個答案再提交喔！")
             else:
                 st.session_state.answered = True
+                # 在畫面上即時判定，並加分
                 if ans == current_q["answer"]:
                     st.session_state.score += 10
-                st.rerun()
+                st.rerun() # 重新整理以鎖定選項並顯示結果
 
-    # 狀態二：已經送出答案，秀出結果並啟動 5 秒倒數
+    # 狀態二：已經送出答案，秀出結果與前進按鈕
     else:
         if ans == current_q["answer"]:
             st.success(f"🎉 太厲害了！答案確實是【{current_q['answer']}】！")
         else:
             st.error(f"❌ 可惜錯囉！正確答案是【{current_q['answer']}】。")
             
-        # 建立 JavaScript 倒數計時器
-        # 當倒數 5 秒結束後，會自動觸發頁面上的隱藏按鈕，讓 Python 接手換關
-        st.markdown(
-            """
-            <div style="padding:10px; background-color:#f1f3f4; border-radius:5px; margin:10px 0;">
-                ⏳ <span id="countdown">5</span> 秒後自動前往下一關...
-            </div>
-            <script>
-            var count = 5;
-            var counter = setInterval(timer, 1000);
-            function timer() {
-                count = count - 1;
-                if (count <= 0) {
-                    clearInterval(counter);
-                    // 尋找 Streamlit 的下一關按鈕並自動點擊
-                    const buttons = window.parent.document.querySelectorAll('button');
-                    for (const button of buttons) {
-                        if (button.textContent.includes('自動下一關')) {
-                            button.click();
-                            break;
-                        }
-                    }
-                    return;
-                }
-                window.parent.document.getElementById("countdown").innerHTML = count;
-            }
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # 這裡放置一個供 JavaScript 點擊的隱藏/自動按鈕
-        if st.button("自動下一關（若未跳轉請點此）", key="auto_next_btn"):
+        btn_label = "結算總分" if current_num == TOTAL_LEVELS else "前往下一關 ➡️"
+        
+        if st.button(btn_label):
+            # 重設「未回答」狀態，並前進到下一關
             st.session_state.answered = False
             st.session_state.level += 1
             st.rerun()
