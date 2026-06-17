@@ -10,7 +10,7 @@ QUIZ_DATA = {
     3:  {"image": "images/level3.jpg",  "options": ["雙", "珪", "上", "船"], "answer": "船"},
     4:  {"image": "images/level4.jpg",  "options": ["蒸", "週", "川", "人"], "answer": "蒸"},
     5:  {"image": "images/level5.jpg",  "options": ["茶", "南", "泰", "世"], "answer": "南"},
-    6:  {"image": "images/level6.jpg",  "options": ["衡", "小", "南", "期"], "answer": "衡"}, # 已修正選項，加入「衡」
+    6:  {"image": "images/level6.jpg",  "options": ["衡", "小", "南", "期"], "answer": "衡"},
     7:  {"image": "images/level7.jpg",  "options": ["今", "當", "至", "令"], "answer": "令"},
     8:  {"image": "images/level8.jpg",  "options": ["譔", "言", "評", "登"], "answer": "登"},
     9:  {"image": "images/level9.jpg",  "options": ["鳥", "島", "駕", "馬"], "answer": "島"},
@@ -24,6 +24,9 @@ if 'level' not in st.session_state:
     st.session_state.level = 1
 if 'score' not in st.session_state:
     st.session_state.score = 0
+# 新增：用來記錄當前關卡是否已經點擊過「檢查答案」
+if 'answered' not in st.session_state:
+    st.session_state.answered = False
 
 # 3. 側邊欄資訊
 st.sidebar.title("👽️ 禹篆挑戰賽")
@@ -46,24 +49,42 @@ if st.session_state.level <= TOTAL_LEVELS:
     current_q = QUIZ_DATA[current_num]
     
     st.header(f"第 {current_num} 關")
-    
     st.image(current_q["image"], caption="禹篆字形局部", use_container_width=True)
     st.write("觀察上述字形，這可能是以下哪個字？")
     
-    ans = st.radio("選擇答案：", current_q["options"], index=None, key=f"q_{current_num}")
+    # 如果已經對過答案，就禁用單選按鈕 (disabled=st.session_state.answered)，防止玩家偷改答案
+    ans = st.radio(
+        "選擇答案：", 
+        current_q["options"], 
+        index=None, 
+        key=f"q_{current_num}", 
+        disabled=st.session_state.answered
+    )
     
-    btn_label = "結算總分" if current_num == TOTAL_LEVELS else "提交答案 & 下一關"
-    
-    if st.button(btn_label):
-        if ans is None:
-            st.warning("請先選擇一個答案再提交喔！")
-        else:
-            if ans == current_q["answer"]:
-                st.session_state.score += 10
-                st.success(f"太厲害了！答案確實是【{current_q['answer']}】！")
+    # 狀態一：還沒送出答案，顯示「檢查答案」按鈕
+    if not st.session_state.answered:
+        if st.button("檢查答案"):
+            if ans is None:
+                st.warning("請先選擇一個答案再提交喔！")
             else:
-                st.error(f"可惜錯囉！正確答案是【{current_q['answer']}】。")
+                st.session_state.answered = True
+                # 在畫面上即時判定，並加分
+                if ans == current_q["answer"]:
+                    st.session_state.score += 10
+                st.rerun() # 重新整理以鎖定選項並顯示結果
+
+    # 狀態二：已經送出答案，秀出結果與前進按鈕
+    else:
+        if ans == current_q["answer"]:
+            st.success(f"🎉 太厲害了！答案確實是【{current_q['answer']}】！")
+        else:
+            st.error(f"❌ 可惜錯囉！正確答案是【{current_q['answer']}】。")
             
+        btn_label = "結算總分" if current_num == TOTAL_LEVELS else "前往下一關 ➡️"
+        
+        if st.button(btn_label):
+            # 重設「未回答」狀態，並前進到下一關
+            st.session_state.answered = False
             st.session_state.level += 1
             st.rerun()
 
@@ -71,11 +92,10 @@ if st.session_state.level <= TOTAL_LEVELS:
 # 結算畫面
 # ---------------------------------------------------------
 else:
-    # 根據分數觸發不同特效
     if st.session_state.score >= 60:
-        st.balloons() # 高分慶祝放氣球
+        st.balloons()
     else:
-        st.snow()     # 低分遺憾下雪（模擬下雨效果）
+        st.snow()
         
     st.header("🎊 挑戰完成！")
     st.write(f"你在這場禹篆探索冒險中獲得了 **{st.session_state.score}** 分（總分 100）。")
@@ -90,4 +110,5 @@ else:
     if st.button("重新開始挑戰"):
         st.session_state.level = 1
         st.session_state.score = 0
+        st.session_state.answered = False
         st.rerun()
